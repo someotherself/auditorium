@@ -1,0 +1,25 @@
+Source: https://github.com/mackron/miniaudio
+Version: 0.11.23
+Source commit: f40cf03f80cdb7e741d43e53b7e706e8c1394bcf
+Target: aarch64-apple-darwin
+Built by: maudio project
+
+Build host:
+  macOS: 15.7.7
+  Architecture: arm64
+  Xcode: 16.4 (16F6)
+  Compiler: Apple clang 17.0.0 (clang-1700.0.13.5)
+  Compiler target: arm64-apple-darwin24.6.0
+  cctools: 1024.3
+
+Build configuration:
+  Language standard: C99
+  Definitions:
+    MA_NO_VORBIS=1
+
+Compile command:
+  clang -arch arm64 -std=c99 -O2 -DMA_NO_VORBIS=1 \
+    -c crates/maudio-sys/native/miniaudio.c -o miniaudio.o
+
+Archive command:
+  libtool -static -o libminiaudio.a miniaudio.o

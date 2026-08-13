@@ -1,0 +1,12 @@
+[package]
+name = "auditorium"
+version = "0.1.0"
+edition = "2024"
+repository = "https://github.com/someotherself/auditorium"
+description = "High-level audio library for playback and capture"
+categories = ["multimedia::audio", "multimedia"]
+
+[dependencies]
+crossbeam-channel = "0.5.16"
+maudio = { version = "0.1.8", features = [ "supplybin" ] }
+symphonia = { version = "0.6.0", features = ["all"] }

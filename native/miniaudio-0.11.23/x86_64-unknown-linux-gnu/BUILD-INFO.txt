@@ -1,0 +1,26 @@
+Source: https://github.com/mackron/miniaudio
+Version: 0.11.23
+Source commit: f40cf03f80cdb7e741d43e53b7e706e8c1394bcf
+Target: x86_64-unknown-linux-gnu
+Built by: maudio project
+
+Build host:
+  Operating system: Windows Server 2022 Datacenter 10.0.20348
+  Architecture: AMD64
+  Runner image: windows-2022 (20260728.258.1)
+  Compiler: GCC 14.2.0 (MinGW-Builds, x86_64-posix-seh-rev2)
+  Compiler target: x86_64-w64-mingw32
+  Archiver: GNU ar 2.44
+
+Build configuration:
+  Language standard: C99
+  Definitions:
+    MA_NO_VORBIS=1
+
+Compile command:
+  gcc -std=c99 -O2 -DMA_NO_VORBIS=1 \
+    -c crates/maudio-sys/native/miniaudio.c \
+    -o miniaudio.o
+
+Archive command:
+  ar rcs libminiaudio.a miniaudio.o
