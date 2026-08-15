@@ -8,5 +8,5 @@ categories = ["multimedia::audio", "multimedia"]
 
 [dependencies]
 crossbeam-channel = "0.5.16"
-maudio = { version = "0.1.8", features = [ "supplybin" ] }
+maudio = { version = "0.1.9", features = [ "supplybin" ] }
 symphonia = { version = "0.6.0", features = ["all"] }
