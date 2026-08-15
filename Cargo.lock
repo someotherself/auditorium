@@ -80,18 +80,18 @@ checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
 
 [[package]]
 name = "maudio"
-version = "0.1.9"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb8a1746ee2939caa562e4d0040e68c5809b8de21f619f84d26afb9e18b67fbf"
+checksum = "d018d93b427d41c95417427f4f68a018ad431f9dee684e7f3e0a22d3f910344d"
 dependencies = [
  "maudio-sys",
 ]
 
 [[package]]
 name = "maudio-sys"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df93836050749169007cd0fdba42e45f0ef512e57817ff71ea5fd025185155b2"
+checksum = "5083fb2131d5a4d9cf42703a656ee44b153054fc435bdf3eeed0363931932491"
 dependencies = [
  "cc",
 ]
