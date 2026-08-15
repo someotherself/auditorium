@@ -62,7 +62,12 @@ This example plays a simple audio source from a file and applies some dsp to it.
     device.start_device()?;
     audio1.start_audio()?;
 
-    std::thread::sleep(std::time::Duration::from_secs(3));
+    // This will only keeps track of current sound(s) and will shutdown when it ends
+    // If you have a playlis, you must keep track of it separately
+    // But this can be used this as a signal to start the next sound
+    while device.is_producing() {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
 
     host.shutdown()?;
 ```
@@ -88,4 +93,20 @@ demonstration purposes only.
     audio.start_audio()?;
 
     std::thread::sleep(std::time::Duration::from_secs(3));
+```
+
+
+```rust
+    let host = Host::spawn()?;
+    let device = host.build_playback_device()?.build()?;
+    let audio1 = device.new_audio(&path)?;
+
+    // We must keep the chain alive too
+    let _chain = audio1.dsp().hpf(3000.0, 1).lpf(8000.0, 2).connect()?;
+
+    device.start_device()?;
+    audio1.start_audio()?;
+
+    host.shutdown()?;
+
 ```
