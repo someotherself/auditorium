@@ -1,3 +1,0 @@
-
-[env]
-MAUDIO_EXTERNAL_LIB_DIR = { value = "native/", relative = true }

@@ -8,8 +8,8 @@ categories = ["multimedia::audio", "multimedia"]
 
 [dependencies]
 crossbeam-channel = "0.5.16"
-maudio = { version = "0.1.9", features = [ "external-lib" ] }
+maudio = { version = "0.1.9", path = "../maudio/crates/maudio", features = [ "external-lib" ] }
 symphonia = { version = "0.6.0", features = ["all"] }
 
 [build-dependencies]
-maudio = { version = "0.1.9", features = ["external-lib"] }
+maudio = { version = "0.1.9", path = "../maudio/crates/maudio", features = ["external-lib"] }
