@@ -1,8 +1,9 @@
 use std::{
     path::Path,
+    rc::Rc,
     sync::{
         Arc,
-        atomic::{AtomicBool, AtomicU32, Ordering},
+        atomic::{AtomicBool, Ordering},
     },
 };
 
@@ -48,7 +49,7 @@ pub(crate) struct PlaybackDeviceInner {
     pub(crate) device: PlaybackDeviceId,
     sender: Sender<HostCommand>,
     is_shutdown: Arc<AtomicBool>,
-    activity_track: Arc<PlaybackActivity>,
+    activity_track: Rc<PlaybackActivity>,
 }
 
 unsafe impl Send for PlaybackDeviceInner {}
@@ -78,7 +79,7 @@ impl PlaybackDevice {
         device: PlaybackDeviceId,
         sender: Sender<HostCommand>,
         is_shutdown: Arc<AtomicBool>,
-        tracker: Arc<PlaybackActivity>,
+        tracker: Rc<PlaybackActivity>,
     ) -> Self {
         Self(Arc::new(PlaybackDeviceInner {
             device,
@@ -243,7 +244,7 @@ impl PlaybackDevice {
     ///
     /// This tracks the absence of audio, not silenced audio.
     pub fn is_producing(&self) -> bool {
-        self.0.activity_track.0.load(Ordering::Relaxed) != 0
+        self.0.activity_track.tracker.load(Ordering::Relaxed) != 0
     }
 }
 
@@ -319,7 +320,7 @@ impl CaptureDevice {
                 &path,
                 state.channels,
                 state.sample_rate,
-                Arc::new(PlaybackActivity(AtomicU32::new(0))),
+                PlaybackActivity::new(None),
             )?;
             let mut node: AttachedSourceNode<
                 DataSource<f32, TrackedSource<CustomDecoder<f32, Fs>>>,
@@ -355,7 +356,7 @@ impl CaptureDevice {
                 wave_type,
                 amplitude,
                 frequency,
-                Arc::new(PlaybackActivity(AtomicU32::new(0))),
+                PlaybackActivity::new(None),
             )?;
             let mut node: AttachedSourceNode<DataSource<f32, TrackedSource<WaveForm<f32>>>> =
                 AttachedSourceNodeBuilder::new(node_graph, src).build()?;
@@ -385,7 +386,7 @@ impl CaptureDevice {
                 amplitude,
                 frequency,
                 duty_cycle,
-                Arc::new(PlaybackActivity(AtomicU32::new(0))),
+                PlaybackActivity::new(None),
             )?;
             let mut node: AttachedSourceNode<DataSource<f32, TrackedSource<PulseWave<f32>>>> =
                 AttachedSourceNodeBuilder::new(node_graph, src).build()?;
@@ -414,7 +415,7 @@ impl CaptureDevice {
                 state.sample_rate,
                 amplitude,
                 noise_type,
-                Arc::new(PlaybackActivity(AtomicU32::new(0))),
+                PlaybackActivity::new(None),
             )?;
             let mut node: AttachedSourceNode<DataSource<f32, TrackedSource<RawNoise<f32>>>> =
                 AttachedSourceNodeBuilder::new(node_graph, src).build()?;

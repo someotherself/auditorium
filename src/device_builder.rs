@@ -25,6 +25,7 @@ pub struct PlaybackDeviceBuilder {
     pub(crate) is_shutdown: Arc<AtomicBool>,
     pub(crate) channels: u32,
     pub(crate) sample_rate: SampleRate,
+    pub(crate) user_flag: Option<Arc<AtomicBool>>,
 }
 
 impl LiveHost for PlaybackDeviceBuilder {
@@ -59,6 +60,11 @@ impl PlaybackDeviceBuilder {
             builder.playback_device_id(&dev_id);
             Ok(())
         })?;
+        Ok(self)
+    }
+
+    pub fn producing_flag(mut self, flag: Arc<AtomicBool>) -> HostResult<Self> {
+        self.user_flag = Some(flag);
         Ok(self)
     }
 
@@ -177,15 +183,17 @@ impl PlaybackDeviceBuilder {
     pub fn build(self) -> HostResult<PlaybackDevice> {
         let id = self.builder;
         let sender = self.sender.clone();
-        let flag = self.is_shutdown.clone();
+        let shutdown_flag = self.is_shutdown.clone();
+        let user_flag = self.user_flag.clone();
         let handle = self.call(move |state| {
             let builder = state
                 .play_device_builders
                 .values
                 .get_mut(&id)
                 .ok_or(AuditoriumError::InvalidDevice)?;
-            let device_store = PlaybackDeviceStore::new(self.channels, self.sample_rate, builder)?;
-            Self::insert_builder(state, device_store, sender, flag)
+            let device_store =
+                PlaybackDeviceStore::new(self.channels, self.sample_rate, builder, user_flag)?;
+            Self::insert_builder(state, device_store, sender, shutdown_flag)
         })?;
         Ok(handle)
     }

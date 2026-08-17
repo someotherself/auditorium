@@ -85,17 +85,33 @@ impl Audio {
         }))
     }
 
-    pub fn seek_to_pcm_frame(&self, frame: u64) -> HostResult<u64> {
+    pub fn seek_to_second(&self, second: f32) -> HostResult<()> {
+        let id = self.0.id;
+        let device_id = self.0.store_id;
+        // let frame = second * self.sa
+        self.0.call_store_impl(device_id, move |store| {
+            let frame = second * u32::try_from(store.sample_rate()).unwrap() as f32;
+            match store.mut_nodes().values.get_mut(&id).unwrap() {
+                HostedNodes::AttachedDecoder(value) => value
+                    .source_mut()
+                    .source
+                    .seek_to_pcm_frame(frame as u64)
+                    .map_err(AuditoriumError::from),
+                _ => unreachable!(),
+            }
+        })
+    }
+
+    pub fn seek_to_pcm_frame(&self, frame: u64) -> HostResult<()> {
         let id = self.0.id;
         let device_id = self.0.store_id;
         self.0.call_store_impl(device_id, move |store| {
             match store.mut_nodes().values.get_mut(&id).unwrap() {
-                HostedNodes::AttachedDecoder(value) => {
-                    value
-                        .source_mut()
-                        .seek_pcm_frames(frame)
-                        .map_err(AuditoriumError::from)
-                }
+                HostedNodes::AttachedDecoder(value) => value
+                    .source_mut()
+                    .source
+                    .seek_to_pcm_frame(frame)
+                    .map_err(AuditoriumError::from),
                 _ => unreachable!(),
             }
         })
@@ -106,10 +122,28 @@ impl Audio {
         let device_id = self.0.store_id;
         self.0.call_store_impl(device_id, move |store| {
             match store.mut_nodes().values.get_mut(&id).unwrap() {
+                HostedNodes::AttachedDecoder(value) => value
+                    .source_mut()
+                    .source
+                    .set_looping(yes)
+                    .map_err(AuditoriumError::from),
+                _ => unreachable!(),
+            }
+        })
+    }
+
+    /// Returns the current position of the cursor in pcm frames
+    pub fn cursor_seconds(&self) -> HostResult<f32> {
+        let id = self.0.id;
+        let device_id = self.0.store_id;
+        self.0.call_store_impl(device_id, move |store| {
+            match store.mut_nodes().values.get_mut(&id).unwrap() {
                 HostedNodes::AttachedDecoder(value) => {
+                    value.source().set_active(true);
                     value
-                        .source_mut()
-                        .set_looping(yes)
+                        .source()
+                        .source
+                        .cursor_in_seconds()
                         .map_err(AuditoriumError::from)
                 }
                 _ => unreachable!(),
@@ -126,8 +160,9 @@ impl Audio {
                 HostedNodes::AttachedDecoder(value) => {
                     value.source().set_active(true);
                     value
-                        .as_source_ref()
-                        .cursor_in_pcm_frames()
+                        .source()
+                        .source
+                        .cursor_pcm()
                         .map_err(AuditoriumError::from)
                 }
                 _ => unreachable!(),
@@ -160,14 +195,30 @@ impl Audio {
         })
     }
 
+    pub fn length_seconds(&self) -> HostResult<f32> {
+        let id = self.0.id;
+        let device_id = self.0.store_id;
+        self.0.call_store_impl(device_id, move |store| {
+            match store.mut_nodes().values.get_mut(&id).unwrap() {
+                HostedNodes::AttachedDecoder(value) => value
+                    .source()
+                    .source
+                    .length_in_seconds()
+                    .map_err(AuditoriumError::from),
+                _ => unreachable!(),
+            }
+        })
+    }
+
     pub fn length_pcm(&self) -> HostResult<u64> {
         let id = self.0.id;
         let device_id = self.0.store_id;
         self.0.call_store_impl(device_id, move |store| {
             match store.mut_nodes().values.get_mut(&id).unwrap() {
                 HostedNodes::AttachedDecoder(value) => value
-                    .as_source_ref()
-                    .length_in_pcm_frames()
+                    .source()
+                    .source
+                    .length_pcm()
                     .map_err(AuditoriumError::from),
                 _ => unreachable!(),
             }

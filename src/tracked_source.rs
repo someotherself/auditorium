@@ -1,5 +1,6 @@
 use std::{
     path::Path,
+    rc::Rc,
     sync::{
         Arc,
         atomic::{AtomicBool, AtomicU32, Ordering},
@@ -25,17 +26,23 @@ use maudio::{
 
 use crate::{AuditoriumError, HostResult, sources::custom_decoder::SymphoniaBackend};
 
-pub(crate) struct PlaybackActivity(pub(crate) AtomicU32);
+pub(crate) struct PlaybackActivity {
+    pub(crate) tracker: AtomicU32,
+    pub(crate) user_flag: Option<Arc<AtomicBool>>,
+}
 
 impl PlaybackActivity {
-    pub(crate) fn new() -> Arc<Self> {
-        Arc::new(PlaybackActivity(AtomicU32::new(0)))
+    pub(crate) fn new(flag: Option<Arc<AtomicBool>>) -> Rc<Self> {
+        Rc::new(PlaybackActivity {
+            tracker: AtomicU32::new(0),
+            user_flag: flag,
+        })
     }
 }
 
 pub struct TrackedSource<S> {
-    active_players: Arc<PlaybackActivity>,
-    is_active: AtomicBool,
+    active_players: Rc<PlaybackActivity>,
+    pub(crate) is_active: AtomicBool,
     pub(crate) src_length: Option<u64>,
     pub(crate) source: S,
 }
@@ -45,9 +52,19 @@ impl<S> TrackedSource<S> {
         let old = self.is_active.swap(yes, Ordering::Relaxed);
         if old != yes {
             if yes {
-                self.active_players.0.fetch_add(1, Ordering::Relaxed);
+                let prev = self.active_players.tracker.fetch_add(1, Ordering::Relaxed);
+                if let Some(ref flag) = self.active_players.user_flag
+                    && prev == 0
+                {
+                    flag.store(true, Ordering::Relaxed);
+                }
             } else {
-                self.active_players.0.fetch_sub(1, Ordering::Relaxed);
+                let prev = self.active_players.tracker.fetch_sub(1, Ordering::Relaxed);
+                if let Some(ref flag) = self.active_players.user_flag
+                    && prev == 1
+                {
+                    flag.store(false, Ordering::Relaxed);
+                }
             }
         }
     }
@@ -62,7 +79,7 @@ impl<S> TrackedSource<S> {
         path: &Path,
         channels: u32,
         sample_rate: SampleRate,
-        tracker: Arc<PlaybackActivity>,
+        tracker: Rc<PlaybackActivity>,
     ) -> HostResult<DataSource<f32, TrackedSource<CustomDecoder<f32, Fs>>>> {
         let decoder = CustomDecoderBuilder::new_f32()
             .backend::<SymphoniaBackend>()
@@ -88,7 +105,7 @@ impl<S> TrackedSource<S> {
         wave_type: WaveFormType,
         amplitude: f64,
         frequency: f64,
-        tracker: Arc<PlaybackActivity>,
+        tracker: Rc<PlaybackActivity>,
     ) -> HostResult<DataSource<f32, TrackedSource<WaveForm<f32>>>> {
         let wave = WaveFormBuilder::new(channels, sample_rate, wave_type, amplitude, frequency)
             .build_f32()?;
@@ -109,7 +126,7 @@ impl<S> TrackedSource<S> {
         amplitude: f64,
         frequency: f64,
         duty_cycle: f64,
-        tracker: Arc<PlaybackActivity>,
+        tracker: Rc<PlaybackActivity>,
     ) -> HostResult<DataSource<f32, TrackedSource<PulseWave<f32>>>> {
         let pulse = PulseWaveBuilder::new(channels, sample_rate, amplitude, frequency, duty_cycle)
             .build_f32()?;
@@ -129,7 +146,7 @@ impl<S> TrackedSource<S> {
         sample_rate: SampleRate,
         amplitude: f64,
         noise_type: NoiseType,
-        tracker: Arc<PlaybackActivity>,
+        tracker: Rc<PlaybackActivity>,
     ) -> HostResult<DataSource<f32, TrackedSource<Noise<f32>>>> {
         let noise = NoiseBuilder::new(channels, noise_type, amplitude).build_f32()?;
         let src = TrackedSource {

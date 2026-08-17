@@ -5,6 +5,7 @@ use std::{
     fmt::Debug,
     marker::PhantomData,
     path::Path,
+    rc::Rc,
     sync::{
         Arc, Mutex,
         atomic::{AtomicBool, Ordering},
@@ -233,7 +234,7 @@ impl CaptureDeviceStore {
 }
 
 pub(crate) struct PlaybackDeviceStore {
-    pub(crate) activity: Arc<PlaybackActivity>,
+    pub(crate) activity: Rc<PlaybackActivity>,
     pub(crate) device: RawDevice<f32>,
     pub(crate) node_graph: NodeGraph,
     pub(crate) nodes: Store<NodeId, HostedNodes>,
@@ -246,6 +247,7 @@ impl PlaybackDeviceStore {
         channels: u32,
         sample_rate: SampleRate,
         builder: &mut RawPlaybackDeviceBuilder<f32>,
+        user_flag: Option<Arc<AtomicBool>>,
     ) -> HostResult<Self> {
         let node_graph = NodeGraphBuilder::new(channels).build()?;
         let mut reader = node_graph.try_acquire_reader()?;
@@ -260,7 +262,7 @@ impl PlaybackDeviceStore {
                 })?;
 
         Ok(PlaybackDeviceStore {
-            activity: PlaybackActivity::new(),
+            activity: PlaybackActivity::new(user_flag),
             device,
             node_graph,
             nodes: Store::<NodeId, HostedNodes>::new(),
@@ -431,6 +433,7 @@ impl Host {
             is_shutdown: self.0.is_shutdown.clone(),
             channels: 2,                      // default value
             sample_rate: SampleRate::Sr44100, // default value
+            user_flag: None,
         };
         let play_dev = play_dev.channels(2)?;
         let play_dev = play_dev.sample_rate(SampleRate::Sr44100)?;
