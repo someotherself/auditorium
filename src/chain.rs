@@ -1,3 +1,4 @@
+//! Dsp elments and configuration
 use std::{
     fmt::Debug,
     sync::{
@@ -32,13 +33,19 @@ use crate::{
 };
 
 pub trait Dsp {
+    // Internal. TODO: Hide in the future
     fn dst_target<'a>(&'a self) -> DspTarget<'a>;
+    // Internal. TODO: Hide in the future
     fn splitter(&self, out_bus_count: u32) -> HostResult<NodeId>;
 
+    /// Start a new dsp chain on this source
     fn dsp<'a>(&'a self) -> DspChain<'a> {
         DspChain::apply_chain(DspChain::new(), self.dst_target())
     }
 
+    /// Add a splitter, starting `N` number of new dsp chains
+    ///
+    /// All branches of the splitter will be mixed on the output
     fn dsp_split<'a, const N: usize>(&'a self) -> HostResult<[DspChain<'a>; N]> {
         let mut chain = [DspChain::apply_chain(DspChain::new(), self.dst_target()); N];
         let splitter = self.splitter(N as u32)?;
@@ -51,6 +58,7 @@ pub trait Dsp {
         Ok(chain)
     }
 
+    /// Apply an existing dsp chain to this source
     fn apply_chain(&self, chain: DspChain) -> HostResult<ConnectedChain> {
         let chain = DspChain::apply_chain(chain, self.dst_target());
         chain.connect()
@@ -109,6 +117,7 @@ pub(crate) struct Splitter {
     bus_index: u32,
 }
 
+#[doc(hidden)]
 #[derive(Clone, Copy)]
 pub enum DspTarget<'a> {
     None,
@@ -132,6 +141,10 @@ impl Debug for DspTarget<'_> {
     }
 }
 
+/// A configuration for a dsp chain that can be applied to a source
+///
+/// [`DspChain::connect`] must be used for this chain to be connected,
+/// creating a [`ConnectedChain`]
 #[derive(Clone, Copy, Debug)]
 pub struct DspChain<'a> {
     elements: [DspElement; 32],
@@ -140,6 +153,10 @@ pub struct DspChain<'a> {
     splitter: Option<Splitter>,
 }
 
+/// A chain of dsp nodes in a node graph
+///
+/// When this chain is dropped, the dsp nodes are disconnected and dropped,
+/// therefore, it needs to be kept alive
 pub struct ConnectedChain {
     store_id: StoreOrigin,
     elements: ConnectedElements,

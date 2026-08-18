@@ -1,3 +1,64 @@
+//! Builders for configuring playback and capture devices.
+//!
+//! [`PlaybackDeviceBuilder`] and [`CaptureDeviceBuilder`] provide a
+//! chainable API for configuring an audio device before creating the
+//! corresponding [`PlaybackDevice`] or [`CaptureDevice`].
+//!
+//! Device configuration is performed on the host thread, and most builder
+//! methods return [`HostResult`] because the underlying device builder is
+//! owned by the host.
+//!
+//! # Building a playback device
+//!
+//! A playback device can be configured with a device ID, channel count,
+//! sample rate, clipping behavior, performance profile, and an optional
+//! flag for tracking whether the device is producing audio.
+//!
+//! ```no_run
+//! # use auditorium::HostResult;
+//! # use auditorium::device_builder::PlaybackDeviceBuilder;
+//! # fn example(builder: PlaybackDeviceBuilder) -> HostResult<()> {
+//! let device = builder
+//!     .channels(2)?
+//!     .sample_rate(maudio::audio::sample_rate::SampleRate::Sr48000)?
+//!     .build()?;
+//!
+//! device.start_device()?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Building a capture device
+//!
+//! A capture device can be configured with a device ID, channel count,
+//! sample rate, clipping behavior, and performance profile.
+//!
+//! The output path is supplied when [`CaptureDeviceBuilder::build`] is
+//! called.
+//!
+//! ```no_run
+//! # use std::path::Path;
+//! # use auditorium::HostResult;
+//! # use auditorium::device_builder::CaptureDeviceBuilder;
+//! # fn example(builder: CaptureDeviceBuilder) -> HostResult<()> {
+//! let device = builder
+//!     .channels(2)?
+//!     .build(Path::new("recording.wav"))?;
+//!
+//! device.start_device()?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Configuration
+//!
+//! The builder methods modify the underlying `maudio` device builder and
+//! return the builder so multiple configuration options can be applied in
+//! sequence.
+//!
+//! Calling [`PlaybackDeviceBuilder::build`] or
+//! [`CaptureDeviceBuilder::build`] consumes the builder and creates the
+//! corresponding device handle.
 use std::{
     path::Path,
     sync::{
@@ -48,6 +109,9 @@ impl HostDispatcher for PlaybackDeviceBuilder {
 }
 
 impl PlaybackDeviceBuilder {
+    /// Selects the playback device to use.
+    ///
+    /// The devices should be enumareted first using [`Context`](crate::maudio::context)
     pub fn device_id(self, device_id: &DeviceId) -> HostResult<Self> {
         let id = self.builder;
         let dev_id = device_id.clone();
@@ -63,6 +127,11 @@ impl PlaybackDeviceBuilder {
         Ok(self)
     }
 
+    /// User provided flag that functions identically to [`PlaybackDevice::is_producing`]
+    ///
+    /// The flag can be shared with other threads and is useful when an
+    /// application needs to monitor playback activity without polling the
+    /// device handle.
     pub fn producing_flag(mut self, flag: Arc<AtomicBool>) -> HostResult<Self> {
         self.user_flag = Some(flag);
         Ok(self)
@@ -83,19 +152,20 @@ impl PlaybackDeviceBuilder {
         Ok(self)
     }
 
-    pub fn clipping(self, yes: bool) -> HostResult<Self> {
-        let id = self.builder;
-        self.call(move |state| {
-            let builder = state
-                .play_device_builders
-                .values
-                .get_mut(&id)
-                .ok_or(AuditoriumError::InvalidDevice)?;
-            builder.clipping(yes);
-            Ok(())
-        })?;
-        Ok(self)
-    }
+    // Always enabled when creating the device
+    // pub fn clipping(self, yes: bool) -> HostResult<Self> {
+    //     let id = self.builder;
+    //     self.call(move |state| {
+    //         let builder = state
+    //             .play_device_builders
+    //             .values
+    //             .get_mut(&id)
+    //             .ok_or(AuditoriumError::InvalidDevice)?;
+    //         builder.clipping(yes);
+    //         Ok(())
+    //     })?;
+    //     Ok(self)
+    // }
 
     pub fn performance_mode(self, mode: PerformanceProfile) -> HostResult<Self> {
         let id = self.builder;
@@ -257,19 +327,19 @@ impl CaptureDeviceBuilder {
         Ok(self)
     }
 
-    pub fn clipping(self, yes: bool) -> HostResult<Self> {
-        let id = self.builder;
-        self.call(move |state| {
-            let builder = state
-                .capt_device_builders
-                .values
-                .get_mut(&id)
-                .ok_or(AuditoriumError::InvalidDevice)?;
-            builder.clipping(yes);
-            Ok(())
-        })?;
-        Ok(self)
-    }
+    // pub fn clipping(self, yes: bool) -> HostResult<Self> {
+    //     let id = self.builder;
+    //     self.call(move |state| {
+    //         let builder = state
+    //             .capt_device_builders
+    //             .values
+    //             .get_mut(&id)
+    //             .ok_or(AuditoriumError::InvalidDevice)?;
+    //         builder.clipping(yes);
+    //         Ok(())
+    //     })?;
+    //     Ok(self)
+    // }
 
     pub fn performance_mode(self, mode: PerformanceProfile) -> HostResult<Self> {
         let id = self.builder;

@@ -1,5 +1,24 @@
-//! Experimental feature
-
+//! Audio host and device management.
+//!
+//! [`Host`] owns a dedicated thread that manages the audio state for the
+//! application. Audio devices, node graphs, sources, and DSP nodes created
+//! through the host are stored and accessed on this thread.
+//!
+//! The public [`Host`] handle can be cloned and sent between threads. Operations
+//! are dispatched to the host thread through an internal command queue, ensuring
+//! that access to the underlying audio state is serialized.
+//!
+//! A host is created with [`Host::spawn`]. It can then be used to create capture
+//! and playback device builders with [`Host::build_capture_device`] and
+//! [`Host::build_playback_device`].
+//!
+//! # Shutdown
+//!
+//! [`Host::shutdown`] stops the host thread and waits for it to exit. Calling
+//! [`Host::shutdown`] explicitly is optional: the host is also shut down when
+//! the last [`Host`] handle is dropped.
+//!
+//! Once shutdown has begun, further operations on existing handles will fail.
 use std::{
     collections::HashMap,
     fmt::Debug,
@@ -145,7 +164,7 @@ impl Drop for HostShared {
     }
 }
 
-pub struct CaptureDeviceStore {
+pub(crate) struct CaptureDeviceStore {
     pub(crate) device: RawDevice<f32>,
     pub(crate) device_node: NodeId,
     pub(crate) node_graph: NodeGraph,
@@ -320,10 +339,38 @@ pub(crate) enum HostCommand {
 
 type Job = Box<dyn FnOnce(&mut HostState) -> HostResult<()> + Send + 'static>;
 
+/// A handle to the audio host.
+///
+/// `Host` provides access to a dedicated thread that owns and manages the
+/// application's audio state. Devices, node graphs, sources, and DSP nodes are
+/// created and manipulated through this host rather than being accessed directly
+/// from the calling thread.
+///
+/// `Host` can be cloned. All clones refer to the same underlying host and may be
+/// used from different threads.
+///
+/// Create a host with [`Host::spawn`]. The host remains active until
+/// [`Host::shutdown`] is called or all `Host` handles are dropped.
+///
+/// # Examples
+///
+/// ```no_run
+/// # fn main() -> auditorium::HostResult<()> {
+/// let host = auditorium::host::Host::spawn()?;
+///
+/// let device = host
+///     .build_playback_device()?
+///     // configure the device...
+///     ;
+///
+/// host.shutdown()?;
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Clone)]
 pub struct Host(Arc<HostShared>);
 
-pub struct HostShared {
+pub(crate) struct HostShared {
     sender: crossbeam_channel::Sender<HostCommand>,
     is_shutdown: Arc<AtomicBool>,
     thread: Arc<EngineThread>,

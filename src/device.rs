@@ -1,3 +1,40 @@
+//! Audio device handles and source creation.
+//!
+//! This module provides [`PlaybackDevice`] and [`CaptureDevice`], which are
+//! handles to audio devices managed by the host.
+//!
+//! Both device types allow audio sources to be created and attached to their
+//! node graphs. Sources can be created from audio files or from generated
+//! waveforms, pulse waves, and noise.
+//!
+//! # Playback
+//!
+//! [`PlaybackDevice`] represents an output device. Sources created through
+//! [`PlaybackDevice`] produce audio that is ultimately sent to the playback
+//! device.
+//!
+//! # Capture
+//!
+//! [`CaptureDevice`] represents an input device. Captured audio can be routed
+//! through the device's node graph, where DSP chains and other processing can
+//! be applied before reaching the output.
+//!
+//! # Device lifecycle
+//!
+//! A device must be started with [`PlaybackDevice::start_device`] or
+//! [`CaptureDevice::start_device`] before it can process audio. Stopping the
+//! device with [`PlaybackDevice::stop_device`] or
+//! [`CaptureDevice::stop_device`] stops the underlying audio device.
+//!
+//! Stopping a device is different from pausing playback or recording. Use
+//! [`PlaybackDevice::pause_playback`] and [`PlaybackDevice::resume_playback`]
+//! for playback, or [`CaptureDevice::pause_recording`] and
+//! [`CaptureDevice::resume_recording`] for capture.
+//!
+//! # Threading
+//!
+//! Device operations are dispatched to the host thread. The device handles
+//! themselves can be cloned and used from other threads.
 use std::{
     path::Path,
     rc::Rc,
@@ -89,7 +126,16 @@ impl PlaybackDevice {
         }))
     }
 
-    /// Create a new file based audio source
+    /// Creates an audio source backed by a file.
+    ///
+    /// The file is decoded using the configured custom decoder and attached to
+    /// this playback device's node graph. The returned [`Audio`] source is
+    /// initially stopped.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file cannot be opened or decoded, or if the source
+    /// cannot be attached to the device's node graph.
     pub fn new_audio<P: AsRef<Path>>(&self, path: P) -> HostResult<Audio> {
         let id = self.0.device;
         let sender = self.0.sender.clone();
@@ -119,7 +165,13 @@ impl PlaybackDevice {
         ))
     }
 
-    /// Create a new waveform generator
+    /// Creates a waveform generator.
+    ///
+    /// The generated waveform is attached to this playback device's node graph.
+    /// The returned [`Wave`] source is initially stopped.
+    ///
+    /// `amplitude` controls the output amplitude and `frequency` controls the
+    /// waveform frequency in Hz.
     pub fn new_wave(
         &self,
         wave_type: WaveFormType,
@@ -154,7 +206,14 @@ impl PlaybackDevice {
         ))
     }
 
-    /// Create a new pulsewave generator
+    /// Creates a pulse-wave generator.
+    ///
+    /// The generated pulse wave is attached to this playback device's node
+    /// graph. The returned [`Pulse`] source is initially stopped.
+    ///
+    /// `amplitude` controls the output amplitude, `frequency` controls the
+    /// frequency in Hz, and `duty_cycle` controls the proportion of each period
+    /// for which the signal is high.
     pub fn new_pulse(&self, amplitude: f64, frequency: f64, duty_cycle: f64) -> HostResult<Pulse> {
         let id = self.0.device;
         let sender = self.0.sender.clone();
@@ -184,7 +243,12 @@ impl PlaybackDevice {
         ))
     }
 
-    /// Create a new noise generator
+    /// Creates a noise generator.
+    ///
+    /// The generated noise is attached to this playback device's node graph.
+    /// The returned [`Noise`] source is initially stopped.
+    ///
+    /// `amplitude` controls the output amplitude.
     pub fn new_noise(&self, noise_type: NoiseType, amplitude: f64) -> HostResult<Noise> {
         let id = self.0.device;
         let sender = self.0.sender.clone();
@@ -213,6 +277,10 @@ impl PlaybackDevice {
         ))
     }
 
+    /// Pauses playback without stopping the underlying audio device or device.
+    ///
+    /// While paused, the device remains running but playback sources do not
+    /// advance through their audio.
     pub fn pause_playback(&self) -> HostResult<()> {
         let id = self.0.device;
         self.call_playback_device(id, move |store| {
@@ -221,6 +289,7 @@ impl PlaybackDevice {
         })
     }
 
+    /// Resumes playback after [`PlaybackDevice::pause_playback`].
     pub fn resume_playback(&self) -> HostResult<()> {
         let id = self.0.device;
         self.call_playback_device(id, move |store| {
@@ -259,9 +328,13 @@ impl PlaybackDevice {
         })
     }
 
-    /// Returns true if there is any audio sources audio to the engine
+    /// Returns whether any playback source is currently producing audio.
     ///
-    /// This tracks the absence of audio, not silenced audio.
+    /// This does not indicate whether the underlying device is running. It tracks
+    /// whether audio sources are actively producing frames for the engine, so a
+    /// running device with no active sources returns `false`.
+    ///
+    /// Silence produced by an active source is still considered producing audio.
     pub fn is_producing(&self) -> bool {
         self.0.activity_track.tracker.load(Ordering::Relaxed) != 0
     }
@@ -327,7 +400,16 @@ impl CaptureDevice {
         }))
     }
 
-    /// Create a new file based audio source
+    /// Creates an audio source backed by a file.
+    ///
+    /// The file is decoded using the configured custom decoder and attached to
+    /// this playback device's node graph. The returned [`Audio`] source is
+    /// initially stopped.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file cannot be opened or decoded, or if the source
+    /// cannot be attached to the device's node graph.
     pub fn new_audio<P: AsRef<Path>>(&self, path: P) -> HostResult<Audio> {
         let id = self.0.device;
         let sender = self.0.sender.clone();
@@ -357,7 +439,13 @@ impl CaptureDevice {
         ))
     }
 
-    /// Create a new waveform generator
+    /// Creates a waveform generator.
+    ///
+    /// The generated waveform is attached to this playback device's node graph.
+    /// The returned [`Wave`] source is initially stopped.
+    ///
+    /// `amplitude` controls the output amplitude and `frequency` controls the
+    /// waveform frequency in Hz.
     pub fn new_wave(
         &self,
         wave_type: WaveFormType,
@@ -392,7 +480,14 @@ impl CaptureDevice {
         ))
     }
 
-    /// Create a new pulsewave generator
+    /// Creates a pulse-wave generator.
+    ///
+    /// The generated pulse wave is attached to this playback device's node
+    /// graph. The returned [`Pulse`] source is initially stopped.
+    ///
+    /// `amplitude` controls the output amplitude, `frequency` controls the
+    /// frequency in Hz, and `duty_cycle` controls the proportion of each period
+    /// for which the signal is high.
     pub fn new_pulse(&self, amplitude: f64, frequency: f64, duty_cycle: f64) -> HostResult<Pulse> {
         let id = self.0.device;
         let sender = self.0.sender.clone();
@@ -422,7 +517,12 @@ impl CaptureDevice {
         ))
     }
 
-    /// Create a new noise generator
+    /// Creates a noise generator.
+    ///
+    /// The generated noise is attached to this playback device's node graph.
+    /// The returned [`Noise`] source is initially stopped.
+    ///
+    /// `amplitude` controls the output amplitude.
     pub fn new_noise(&self, noise_type: NoiseType, amplitude: f64) -> HostResult<Noise> {
         let id = self.0.device;
         let sender = self.0.sender.clone();
@@ -451,7 +551,10 @@ impl CaptureDevice {
         ))
     }
 
-    /// Start a dsp chain for this capture device
+    /// Creates a DSP chain starting at this capture device.
+    ///
+    /// The returned chain can be used to add DSP nodes to the capture signal
+    /// path.
     pub fn dsp<'a>(&'a self) -> DspChain<'a> {
         DspChain::apply_chain(DspChain::new(), DspTarget::Capture(self))
     }

@@ -1,3 +1,17 @@
+//! Noise generator
+//!
+//! This module provide [`Noise`], a handle for controlling a Noise
+//! generator managed by a [`Host`](crate::host).
+//!
+//! `Noise` does not directly own the underlying pulse generator. Instead, the
+//! source is stored in the node graph associated with the device that created
+//! it. Operations performed through `Noise` are dispatched to the host thread,
+//! where the source and its node can be safely accessed.
+//!
+//! `Noise` can be cloned. Each clone refers to the same underlying noise generator.
+//! The source remains available while at least one `Noise` handle exists.
+//!
+//! Dropping the final handle removes the source from its device's node graph.
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
@@ -22,6 +36,20 @@ use crate::{
     tracked_source::TrackedSource,
 };
 
+/// A handle for a Waveform generator.
+///
+/// `Noise` provides control over an noise generator stored in a device's node
+/// graph. It can be used to start and stop playback, seek, configure looping
+/// and volume, query the current position and length, and attach DSP effects.
+///
+/// `Noise` does not directly own the underlying source. Instead, operations are
+/// dispatched to the host thread, which owns the device and its node graph.
+///
+/// `Noise` can be cloned, and all clones refer to the same underlying source.
+/// The source is removed from the node graph when the final handle is dropped.
+///
+/// Most operations return [`AuditoriumError::HostShutdown`] if the associated
+/// host has already been shut down.
 #[derive(Clone)]
 pub struct Noise(pub(crate) Arc<NoiseInner>);
 

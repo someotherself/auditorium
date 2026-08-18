@@ -1,21 +1,52 @@
+//! # Auditorium
+//!
+//! A high-level Rust audio library for playback, capture, procedural audio,
+//! and DSP.
+//!
+//! Auditorium is built around [`Host`](crate::host)s, which manage audio devices and their
+//! processing graphs. A host can manage multiple playback and capture devices,
+//! allowing independent audio pipelines to run concurrently.
+//!
+//! Audio can be loaded from files or generated procedurally using sources such
+//! as waveforms, pulse waves, and noise. Sources and capture devices can be
+//! connected to DSP chains before their audio is sent to an output device.
+//!
+//! ## Main components
+//!
+//! - [`Host`](crate::host) — manages audio devices and their processing.
+//! - [`PlaybackDevice`](crate::device) — provides audio output and playback sources.
+//! - [`CaptureDevice`](crate::device) — provides audio input and recording.
+//! - [`PlaybackDeviceBuilder`](crate::device_builder) — configures and creates playback devices.
+//! - [`CaptureDeviceBuilder`](crate::device_builder) — configures and creates capture devices.
+//!
+//! Playback devices can also report when sources are actively producing audio,
+//! which can be used to synchronize application logic with the end of playback.
+//!
+//! For supported platforms, audio backends, formats, and examples, see the
+//! project README.
 pub mod chain;
 pub mod device;
 pub mod device_builder;
 pub mod host;
 pub mod sources;
-pub mod store_ops;
-pub mod tracked_source;
+mod store_ops;
+mod tracked_source;
 
-pub use maudio::audio::{performance, sample_rate, wave_shape};
-pub use maudio::context;
-pub use maudio::device::{device_id, device_info, device_type};
+use ::maudio::MaudioError;
+
+/// Re-exported maudio types and helpers
+pub mod maudio {
+    pub use ::maudio::audio::{performance, sample_rate, wave_shape};
+    pub use ::maudio::context;
+    pub use ::maudio::device::{device_id, device_info, device_type};
+}
 
 pub type HostResult<T> = Result<T, AuditoriumError>;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[non_exhaustive]
 pub enum AuditoriumError {
-    Maudio(maudio::MaudioError),
+    Maudio(MaudioError),
     ChannelSend,
     ChannelRecv,
     HostShutdown,
@@ -52,8 +83,8 @@ impl From<std::io::Error> for AuditoriumError {
 
 impl std::error::Error for AuditoriumError {}
 
-impl From<maudio::MaudioError> for AuditoriumError {
-    fn from(err: maudio::MaudioError) -> Self {
+impl From<MaudioError> for AuditoriumError {
+    fn from(err: MaudioError) -> Self {
         Self::Maudio(err)
     }
 }

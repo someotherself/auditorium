@@ -1,3 +1,17 @@
+//! Waveform generator
+//!
+//! This module provide [`Wave`], a handle for controlling a Waveform
+//! generator managed by a [`Host`](crate::host).
+//!
+//! `Wave` does not directly own the underlying wave generator. Instead, the
+//! source is stored in the node graph associated with the device that created
+//! it. Operations performed through `Wave` are dispatched to the host thread,
+//! where the source and its node can be safely accessed.
+//!
+//! `wave` can be cloned. Each clone refers to the same underlying wave generator.
+//! The source remains available while at least one `Wave` handle exists.
+//!
+//! Dropping the final handle removes the source from its device's node graph.
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
@@ -26,6 +40,20 @@ use crate::{
     tracked_source::TrackedSource,
 };
 
+/// A handle for a Waveform generator.
+///
+/// `Wave` provides control over an wave generator stored in a device's node
+/// graph. It can be used to start and stop playback, seek, configure looping
+/// and volume, query the current position and length, and attach DSP effects.
+///
+/// `Wave` does not directly own the underlying source. Instead, operations are
+/// dispatched to the host thread, which owns the device and its node graph.
+///
+/// `Wave` can be cloned, and all clones refer to the same underlying source.
+/// The source is removed from the node graph when the final handle is dropped.
+///
+/// Most operations return [`AuditoriumError::HostShutdown`] if the associated
+/// host has already been shut down.
 #[derive(Clone)]
 pub struct Wave(pub(crate) Arc<WaveInner>);
 

@@ -1,3 +1,17 @@
+//! Decoder backed audio source control.
+//!
+//! This module provides [`Audio`], a handle for controlling a decoder-backed
+//! audio source managed by a [`Host`](crate::host).
+//!
+//! `Audio` does not directly own the underlying audio source. Instead, the
+//! source is stored in the node graph associated with the device that created
+//! it. Operations performed through `Audio` are dispatched to the host thread,
+//! where the source and its node can be safely accessed.
+//!
+//! `Audio` can be cloned. Each clone refers to the same underlying audio source.
+//! The source remains available while at least one `Audio` handle exists.
+//!
+//! Dropping the final handle removes the source from its device's node graph.
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
@@ -25,6 +39,20 @@ use crate::{
     tracked_source::TrackedSource,
 };
 
+/// A handle to a decoder-backed audio source.
+///
+/// `Audio` provides control over an audio source stored in a device's node
+/// graph. It can be used to start and stop playback, seek, configure looping
+/// and volume, query the current position and length, and attach DSP effects.
+///
+/// `Audio` does not directly own the underlying source. Instead, operations are
+/// dispatched to the host thread, which owns the device and its node graph.
+///
+/// `Audio` can be cloned, and all clones refer to the same underlying source.
+/// The source is removed from the node graph when the final handle is dropped.
+///
+/// Most operations return [`AuditoriumError::HostShutdown`] if the associated
+/// host has already been shut down.
 #[derive(Clone)]
 pub struct Audio(pub(crate) Arc<AudioInner>);
 
@@ -85,6 +113,7 @@ impl Audio {
         }))
     }
 
+    /// Seeks the audio source to the given position in seconds.
     pub fn seek_to_second(&self, second: f32) -> HostResult<()> {
         let id = self.0.id;
         let device_id = self.0.store_id;
@@ -102,6 +131,7 @@ impl Audio {
         })
     }
 
+    /// Seeks the audio source to the given PCM frame.
     pub fn seek_to_pcm_frame(&self, frame: u64) -> HostResult<()> {
         let id = self.0.id;
         let device_id = self.0.store_id;
@@ -117,6 +147,10 @@ impl Audio {
         })
     }
 
+    /// Enables or disables looping for this audio source.
+    ///
+    /// When looping is enabled, playback continues from the beginning after
+    /// reaching the end of the source.
     pub fn set_looping(&self, yes: bool) -> HostResult<()> {
         let id = self.0.id;
         let device_id = self.0.store_id;
@@ -170,6 +204,9 @@ impl Audio {
         })
     }
 
+    /// Sets the volume of this audio source.
+    ///
+    /// A value of `1.0` represents the source's original volume.
     pub fn set_volume(&self, volume: f32) -> HostResult<()> {
         let id = self.0.id;
         let device_id = self.0.store_id;
@@ -184,6 +221,7 @@ impl Audio {
         })
     }
 
+    /// Returns the current volume of this audio source.
     pub fn get_volume(&self) -> HostResult<f32> {
         let id = self.0.id;
         let device_id = self.0.store_id;
@@ -195,6 +233,7 @@ impl Audio {
         })
     }
 
+    /// Returns the length of the audio source in seconds.
     pub fn length_seconds(&self) -> HostResult<f32> {
         let id = self.0.id;
         let device_id = self.0.store_id;
@@ -210,6 +249,7 @@ impl Audio {
         })
     }
 
+    /// Returns the length of the audio source in PCM frames.
     pub fn length_pcm(&self) -> HostResult<u64> {
         let id = self.0.id;
         let device_id = self.0.store_id;
@@ -225,6 +265,7 @@ impl Audio {
         })
     }
 
+    /// Starts playback of this audio source.
     pub fn start_audio(&self) -> HostResult<()> {
         let id = self.0.id;
         let device_id = self.0.store_id;
@@ -242,6 +283,7 @@ impl Audio {
         })
     }
 
+    /// Stops playback of this audio source.
     pub fn stop_audio(&self) -> HostResult<()> {
         let id = self.0.id;
         let device_id = self.0.store_id;
