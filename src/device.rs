@@ -213,6 +213,22 @@ impl PlaybackDevice {
         ))
     }
 
+    pub fn pause_playback(&self) -> HostResult<()> {
+        let id = self.0.device;
+        self.call_playback_device(id, move |store| {
+            store.paused.store(true, Ordering::Relaxed);
+            Ok(())
+        })
+    }
+
+    pub fn resume_playback(&self) -> HostResult<()> {
+        let id = self.0.device;
+        self.call_playback_device(id, move |store| {
+            store.paused.store(false, Ordering::Relaxed);
+            Ok(())
+        })
+    }
+
     /// Start the device.
     ///
     /// This allows the device to pull frames from any sources.
@@ -228,6 +244,9 @@ impl PlaybackDevice {
         })
     }
 
+    /// Stops the device.
+    ///
+    /// It is not recommended to use this for pausing playback. Use [`PlaybackDevice::pause_playback`]
     pub fn stop_device(&self) -> HostResult<()> {
         let id = self.0.device;
         self.call_playback_device(id, move |store| {
@@ -444,6 +463,22 @@ impl CaptureDevice {
         [DspChain::apply_chain(DspChain::new(), DspTarget::Capture(self)); N]
     }
 
+    pub fn pause_recording(&self) -> HostResult<()> {
+        let id = self.0.device;
+        self.call_capture_device(id, move |store| {
+            store.paused.store(true, Ordering::Relaxed);
+            Ok(())
+        })
+    }
+
+    pub fn resume_recording(&self) -> HostResult<()> {
+        let id = self.0.device;
+        self.call_capture_device(id, move |store| {
+            store.paused.store(false, Ordering::Relaxed);
+            Ok(())
+        })
+    }
+
     /// Start the device.
     ///
     /// This allows the device to output captured sound and any other sources to output as well.
@@ -459,6 +494,9 @@ impl CaptureDevice {
         })
     }
 
+    /// Stops the device.
+    ///
+    /// It is not recommended to use this for pausing recording. Use [`CaptureDevice::pause_recording`]
     pub fn stop_device(&self) -> HostResult<()> {
         let id = self.0.device;
         self.call_capture_device(id, move |store| {

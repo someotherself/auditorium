@@ -90,7 +90,7 @@ impl Audio {
         let device_id = self.0.store_id;
         // let frame = second * self.sa
         self.0.call_store_impl(device_id, move |store| {
-            let frame = second * u32::try_from(store.sample_rate()).unwrap() as f32;
+            let frame = second * u32::from(store.sample_rate()) as f32;
             match store.mut_nodes().values.get_mut(&id).unwrap() {
                 HostedNodes::AttachedDecoder(value) => value
                     .source_mut()

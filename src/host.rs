@@ -152,6 +152,7 @@ pub struct CaptureDeviceStore {
     pub(crate) nodes: Store<NodeId, HostedNodes>,
     pub(crate) channels: u32,
     pub(crate) sample_rate: SampleRate,
+    pub(crate) paused: Arc<AtomicBool>,
 }
 
 impl CaptureDeviceStore {
@@ -189,12 +190,19 @@ impl CaptureDeviceStore {
         // We need an intermediary buffer between the endpoint and the encoder
         let mut out_buff = vec![0.0; frames * channels as usize];
 
+        let paused = Arc::new(AtomicBool::new(false));
+        let pause_clone = paused.clone();
+
         let device = builder
             .capture_channels(channels)
             .sample_rate(sample_rate)
             .period_size_frames(frames as u32)
             .fixed_callback_size(true)
             .with_callback(move |_, input: &[f32]| {
+                if pause_clone.load(Ordering::Relaxed) {
+                    return;
+                }
+
                 if !input.len().is_multiple_of(channels as usize) {
                     eprintln!("Misaligned capture input: {} samples", input.len());
                     return;
@@ -229,6 +237,7 @@ impl CaptureDeviceStore {
             nodes: store,
             channels,
             sample_rate,
+            paused,
         })
     }
 }
@@ -240,6 +249,7 @@ pub(crate) struct PlaybackDeviceStore {
     pub(crate) nodes: Store<NodeId, HostedNodes>,
     pub(crate) channels: u32,
     pub(crate) sample_rate: SampleRate,
+    pub(crate) paused: Arc<AtomicBool>,
 }
 
 impl PlaybackDeviceStore {
@@ -252,10 +262,18 @@ impl PlaybackDeviceStore {
         let node_graph = NodeGraphBuilder::new(channels).build()?;
         let mut reader = node_graph.try_acquire_reader()?;
 
+        let paused = Arc::new(AtomicBool::new(false));
+        let pause_clone = paused.clone();
+
         let device =
             builder
                 .playback_channels(channels)
                 .with_callback(move |_, out: &mut [f32]| {
+                    if pause_clone.load(Ordering::Relaxed) {
+                        out.fill(0.0);
+                        return;
+                    }
+
                     // The node graph always outputs silence is there are no sources
                     // and always satisfies the device's requested frame count
                     let _ = reader.read_pcm_frames_into(out);
@@ -268,6 +286,7 @@ impl PlaybackDeviceStore {
             nodes: Store::<NodeId, HostedNodes>::new(),
             channels,
             sample_rate,
+            paused,
         })
     }
 }
