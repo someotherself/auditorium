@@ -156,12 +156,47 @@ pub struct DspChain<'a> {
 /// A chain of dsp nodes in a node graph
 ///
 /// When this chain is dropped, the dsp nodes are disconnected and dropped,
-/// therefore, it needs to be kept alive
+/// therefore, it needs to be kept alive.
+///
+/// On drop, the source will be reconnected to the output.
 pub struct ConnectedChain {
     store_id: StoreOrigin,
     elements: ConnectedElements,
+    base_node: ChainBase, // either a source or a splitter
     sender: Sender<HostCommand>,
     is_shutdown: Arc<AtomicBool>,
+}
+
+#[derive(Clone, Copy)]
+enum ChainBase {
+    DeviceNode(u64),
+    SourceNode(u64),
+}
+
+impl ConnectedChain {
+    fn reconnect_source(&self) -> HostResult<()> {
+        let base_node = self.base_node;
+        self.call_store_impl(self.store_id, move |state| {
+            let mut endpoint = state.node_graph().endpoint();
+            let base_node = match base_node {
+                ChainBase::DeviceNode(id) => {
+                    let Some(base_node) = state.nodes().values.get(&id) else {
+                        return Ok(());
+                    };
+                    base_node
+                }
+                ChainBase::SourceNode(id) => {
+                    let Some(base_node) = state.nodes().values.get(&id) else {
+                        return Ok(());
+                    };
+                    base_node
+                }
+            };
+            DspChain::match_node(base_node).attach_output_bus(0, &mut endpoint, 0)?;
+
+            Ok(())
+        })
+    }
 }
 
 struct ConnectedElements {
@@ -219,6 +254,7 @@ impl Drop for ConnectedChain {
             }
             Ok(())
         });
+        let _ = self.reconnect_source();
     }
 }
 
@@ -535,18 +571,23 @@ impl<'a> DspChain<'a> {
                     self.splitter,
                     elements,
                 )?;
+                let base_node = self.splitter.map_or(audio.0.id, |s| s.id);
                 ConnectedChain {
                     store_id: audio.0.store_id,
                     elements,
+                    base_node: ChainBase::SourceNode(base_node),
                     sender: audio.0.sender.clone(),
                     is_shutdown: audio.0.is_shutdown.clone(),
                 }
             }
             DspTarget::Capture(device) => {
                 let elements = self.connect_capture_chain(device, elements)?;
+                let device_node =
+                    device.call_capture_device(device.0.device, |state| Ok(state.device_node))?;
                 ConnectedChain {
                     store_id: StoreOrigin::Capture(device.0.device),
                     elements,
+                    base_node: ChainBase::DeviceNode(device_node),
                     sender: device.0.sender.clone(),
                     is_shutdown: device.0.is_shutdown.clone(),
                 }
@@ -559,9 +600,11 @@ impl<'a> DspChain<'a> {
                     self.splitter,
                     elements,
                 )?;
+                let base_node = self.splitter.map_or(pulse.0.id, |s| s.id);
                 ConnectedChain {
                     store_id: pulse.0.store_id,
                     elements,
+                    base_node: ChainBase::SourceNode(base_node),
                     sender: pulse.0.sender.clone(),
                     is_shutdown: pulse.0.is_shutdown.clone(),
                 }
@@ -574,9 +617,11 @@ impl<'a> DspChain<'a> {
                     self.splitter,
                     elements,
                 )?;
+                let base_node = self.splitter.map_or(wave.0.id, |s| s.id);
                 ConnectedChain {
                     store_id: wave.0.store_id,
                     elements,
+                    base_node: ChainBase::SourceNode(base_node),
                     sender: wave.0.sender.clone(),
                     is_shutdown: wave.0.is_shutdown.clone(),
                 }
@@ -589,9 +634,11 @@ impl<'a> DspChain<'a> {
                     self.splitter,
                     elements,
                 )?;
+                let base_node = self.splitter.map_or(noise.0.id, |s| s.id);
                 ConnectedChain {
                     store_id: noise.0.store_id,
                     elements,
+                    base_node: ChainBase::SourceNode(base_node),
                     sender: noise.0.sender.clone(),
                     is_shutdown: noise.0.is_shutdown.clone(),
                 }
