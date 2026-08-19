@@ -152,20 +152,19 @@ impl PlaybackDeviceBuilder {
         Ok(self)
     }
 
-    // Always enabled when creating the device
-    // pub fn clipping(self, yes: bool) -> HostResult<Self> {
-    //     let id = self.builder;
-    //     self.call(move |state| {
-    //         let builder = state
-    //             .play_device_builders
-    //             .values
-    //             .get_mut(&id)
-    //             .ok_or(AuditoriumError::InvalidDevice)?;
-    //         builder.clipping(yes);
-    //         Ok(())
-    //     })?;
-    //     Ok(self)
-    // }
+    pub fn clipping(self, yes: bool) -> HostResult<Self> {
+        let id = self.builder;
+        self.call(move |state| {
+            let builder = state
+                .play_device_builders
+                .values
+                .get_mut(&id)
+                .ok_or(AuditoriumError::InvalidDevice)?;
+            builder.clipping(yes);
+            Ok(())
+        })?;
+        Ok(self)
+    }
 
     pub fn performance_mode(self, mode: PerformanceProfile) -> HostResult<Self> {
         let id = self.builder;
@@ -327,19 +326,19 @@ impl CaptureDeviceBuilder {
         Ok(self)
     }
 
-    // pub fn clipping(self, yes: bool) -> HostResult<Self> {
-    //     let id = self.builder;
-    //     self.call(move |state| {
-    //         let builder = state
-    //             .capt_device_builders
-    //             .values
-    //             .get_mut(&id)
-    //             .ok_or(AuditoriumError::InvalidDevice)?;
-    //         builder.clipping(yes);
-    //         Ok(())
-    //     })?;
-    //     Ok(self)
-    // }
+    pub fn clipping(self, yes: bool) -> HostResult<Self> {
+        let id = self.builder;
+        self.call(move |state| {
+            let builder = state
+                .capt_device_builders
+                .values
+                .get_mut(&id)
+                .ok_or(AuditoriumError::InvalidDevice)?;
+            builder.clipping(yes);
+            Ok(())
+        })?;
+        Ok(self)
+    }
 
     pub fn performance_mode(self, mode: PerformanceProfile) -> HostResult<Self> {
         let id = self.builder;
