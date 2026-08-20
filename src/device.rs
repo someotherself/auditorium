@@ -595,6 +595,34 @@ impl CaptureDevice {
         })
     }
 
+    /// Use this to pauses only the capture device and leave any other sources still playing.
+    pub fn pause_device(&self) -> HostResult<()> {
+        let id = self.0.device;
+        self.call_capture_device(id, move |store| {
+            let node_id = store.device_node;
+            let node = store.nodes.values.get_mut(&node_id).unwrap();
+            match node {
+                HostedNodes::SplitterNode(node) => node.set_state(NodeState::Stopped)?,
+                _ => unreachable!(),
+            };
+            Ok(())
+        })
+    }
+
+    /// Resume the capture device
+    pub fn resume_device(&self) -> HostResult<()> {
+        let id = self.0.device;
+        self.call_capture_device(id, move |store| {
+            let node_id = store.device_node;
+            let node = store.nodes.values.get_mut(&node_id).unwrap();
+            match node {
+                HostedNodes::SplitterNode(node) => node.set_state(NodeState::Started)?,
+                _ => unreachable!(),
+            };
+            Ok(())
+        })
+    }
+
     /// Start the device.
     ///
     /// This allows the device to output captured sound and any other sources to output as well.
