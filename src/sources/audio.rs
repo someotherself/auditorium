@@ -20,11 +20,11 @@ use std::sync::{
 use crossbeam_channel::Sender;
 use maudio::{
     MaResult,
-    data_source::{
-        pcm_source::PcmSource,
-        sources::decoder::{DecoderOps, Fs, custom_decoder::CustomDecoder},
+    data_source::{DataSourceOps, pcm_source::PcmSource},
+    engine::{
+        node_graph::nodes::{NodeOps, NodeState, routing::splitter::SplitterNodeBuilder},
+        resource::{Unknown, rm_stream::ResourceManagerStream},
     },
-    engine::node_graph::nodes::{NodeOps, NodeState, routing::splitter::SplitterNodeBuilder},
 };
 
 use crate::{
@@ -139,7 +139,6 @@ impl Audio {
             match store.mut_nodes().values.get_mut(&id).unwrap() {
                 HostedNodes::AttachedDecoder(value) => value
                     .source_mut()
-                    .source
                     .seek_to_pcm_frame(frame)
                     .map_err(AuditoriumError::from),
                 _ => unreachable!(),
@@ -158,7 +157,6 @@ impl Audio {
             match store.mut_nodes().values.get_mut(&id).unwrap() {
                 HostedNodes::AttachedDecoder(value) => value
                     .source_mut()
-                    .source
                     .set_looping(yes)
                     .map_err(AuditoriumError::from),
                 _ => unreachable!(),
@@ -176,7 +174,6 @@ impl Audio {
                     value.source().set_active(true);
                     value
                         .source()
-                        .source
                         .cursor_in_seconds()
                         .map_err(AuditoriumError::from)
                 }
@@ -196,7 +193,7 @@ impl Audio {
                     value
                         .source()
                         .source
-                        .cursor_pcm()
+                        .cursor_in_pcm_frames()
                         .map_err(AuditoriumError::from)
                 }
                 _ => unreachable!(),
@@ -258,7 +255,7 @@ impl Audio {
                 HostedNodes::AttachedDecoder(value) => value
                     .source()
                     .source
-                    .length_pcm()
+                    .length_in_pcm_frames()
                     .map_err(AuditoriumError::from),
                 _ => unreachable!(),
             }
@@ -299,7 +296,7 @@ impl Audio {
     }
 }
 
-impl PcmSource<f32> for TrackedSource<CustomDecoder<f32, Fs>> {
+impl PcmSource<f32> for TrackedSource<ResourceManagerStream<f32, Unknown>> {
     fn fill_pcm_frames(
         &mut self,
         out: &mut [f32],
@@ -327,11 +324,11 @@ impl PcmSource<f32> for TrackedSource<CustomDecoder<f32, Fs>> {
     }
 
     fn cursor_in_pcm_frames(&self, _ctx: &maudio::data_source::SourceContext) -> MaResult<u64> {
-        self.source.cursor_pcm()
+        self.source.cursor_in_pcm_frames()
     }
 
     fn length_in_pcm_frames(&self, _ctx: &maudio::data_source::SourceContext) -> MaResult<u64> {
-        self.source.length_pcm()
+        self.source.length_in_pcm_frames()
     }
 }
 

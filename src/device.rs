@@ -56,12 +56,17 @@ use maudio::{
             waveform::WaveForm,
         },
     },
-    engine::node_graph::{
-        NodeGraphOps,
-        nodes::{
-            NodeOps, NodeState,
-            routing::splitter::SplitterNodeBuilder,
-            source::source_node::{AttachedSourceNode, AttachedSourceNodeBuilder},
+    engine::{
+        node_graph::{
+            NodeGraphOps,
+            nodes::{
+                NodeOps, NodeState,
+                routing::splitter::SplitterNodeBuilder,
+                source::source_node::{AttachedSourceNode, AttachedSourceNodeBuilder},
+            },
+        },
+        resource::{
+            RmOps, Unknown, rm_source_flags::RmSourceFlags, rm_stream::ResourceManagerStream,
         },
     },
 };
@@ -143,15 +148,18 @@ impl PlaybackDevice {
         let node_id = self.call_playback_device(id, move |state| {
             let node_graph = &state.node_graph;
             let mut endpoint = node_graph.endpoint();
-            let src = TrackedSource::<CustomDecoder<f32, Fs>>::new_decoder(
-                &path,
+            let guard = state.res_man.register_file(&path, RmSourceFlags::NONE)?;
+            let stream: ResourceManagerStream<f32, Unknown> = guard
+                .build_stream(RmSourceFlags::NONE, None)?
+                .into_ready()
+                .unwrap();
+            let src = TrackedSource::<ResourceManagerStream<f32, Unknown>>::new_decoder(
                 state.channels,
                 state.sample_rate,
                 state.activity.clone(),
+                stream,
             )?;
-            let mut node: AttachedSourceNode<
-                DataSource<f32, TrackedSource<CustomDecoder<f32, Fs>>>,
-            > = AttachedSourceNodeBuilder::new(node_graph, src).build()?;
+            let mut node = AttachedSourceNodeBuilder::new(node_graph, src).build()?;
             node.attach_output_bus(0, &mut endpoint, 0)?;
             node.set_state(NodeState::Stopped)?;
             let id = state.nodes.insert(HostedNodes::AttachedDecoder(node));
@@ -417,14 +425,19 @@ impl CaptureDevice {
         let node_id = self.call_capture_device(id, move |state| {
             let node_graph = &state.node_graph;
             let mut endpoint = node_graph.endpoint();
+            let guard = state.res_man.register_file(&path, RmSourceFlags::NONE)?;
+            let stream: ResourceManagerStream<f32, Unknown> = guard
+                .build_stream(RmSourceFlags::NONE, None)?
+                .into_ready()
+                .unwrap();
             let src = TrackedSource::<CustomDecoder<f32, Fs>>::new_decoder(
-                &path,
                 state.channels,
                 state.sample_rate,
                 PlaybackActivity::new(None),
+                stream,
             )?;
             let mut node: AttachedSourceNode<
-                DataSource<f32, TrackedSource<CustomDecoder<f32, Fs>>>,
+                DataSource<f32, TrackedSource<ResourceManagerStream<f32, Unknown>>>,
             > = AttachedSourceNodeBuilder::new(node_graph, src).build()?;
             node.attach_output_bus(0, &mut endpoint, 0)?;
             node.set_state(NodeState::Stopped)?;

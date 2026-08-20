@@ -37,11 +37,7 @@ use maudio::{
     data_source::{
         DataSource,
         sources::{
-            buffer::AudioBufferBuilder,
-            decoder::{Fs, custom_decoder::CustomDecoder},
-            noise::Noise,
-            pulsewave::PulseWave,
-            waveform::WaveForm,
+            buffer::AudioBufferBuilder, noise::Noise, pulsewave::PulseWave, waveform::WaveForm,
         },
     },
     device::{
@@ -52,18 +48,24 @@ use maudio::{
         },
     },
     encoder::EncoderBuilder,
-    engine::node_graph::{
-        NodeGraph, NodeGraphOps,
-        node_graph_builder::NodeGraphBuilder,
-        nodes::{
-            NodeOps,
-            effects::delay::DelayNode,
-            filters::{
-                biquad::BiquadNode, hishelf::HiShelfNode, hpf::HpfNode, loshelf::LoShelfNode,
-                lpf::LpfNode, notch::NotchNode, peak::PeakNode,
+    engine::{
+        node_graph::{
+            NodeGraph, NodeGraphOps,
+            node_graph_builder::NodeGraphBuilder,
+            nodes::{
+                NodeOps,
+                effects::delay::DelayNode,
+                filters::{
+                    biquad::BiquadNode, hishelf::HiShelfNode, hpf::HpfNode, loshelf::LoShelfNode,
+                    lpf::LpfNode, notch::NotchNode, peak::PeakNode,
+                },
+                routing::splitter::{SplitterNode, SplitterNodeBuilder},
+                source::source_node::{AttachedSourceNode, AttachedSourceNodeBuilder},
             },
-            routing::splitter::{SplitterNode, SplitterNodeBuilder},
-            source::source_node::{AttachedSourceNode, AttachedSourceNodeBuilder},
+        },
+        resource::{
+            ResourceManager, Unknown, rm_builder::ResourceManagerBuilder,
+            rm_stream::ResourceManagerStream,
         },
     },
 };
@@ -71,6 +73,7 @@ use maudio::{
 use crate::{
     AuditoriumError, HostResult,
     device_builder::{CaptureDeviceBuilder, PlaybackDeviceBuilder},
+    sources::custom_decoder::SymphoniaBackend,
     store_ops::{HostDispatcher, LiveHost},
     tracked_source::{PlaybackActivity, TrackedSource},
 };
@@ -92,7 +95,9 @@ pub(crate) struct HostState<'a> {
 
 #[non_exhaustive]
 pub(crate) enum HostedNodes {
-    AttachedDecoder(AttachedSourceNode<DataSource<f32, TrackedSource<CustomDecoder<f32, Fs>>>>),
+    AttachedDecoder(
+        AttachedSourceNode<DataSource<f32, TrackedSource<ResourceManagerStream<f32, Unknown>>>>,
+    ),
     AttachedWave(AttachedSourceNode<DataSource<f32, TrackedSource<WaveForm<f32>>>>),
     AttachedPulse(AttachedSourceNode<DataSource<f32, TrackedSource<PulseWave<f32>>>>),
     AttachedNoise(AttachedSourceNode<DataSource<f32, TrackedSource<Noise<f32>>>>),
@@ -166,6 +171,7 @@ impl Drop for HostShared {
 
 pub(crate) struct CaptureDeviceStore {
     pub(crate) device: RawDevice<f32>,
+    pub(crate) res_man: ResourceManager<f32>,
     pub(crate) device_node: NodeId,
     pub(crate) node_graph: NodeGraph,
     pub(crate) nodes: Store<NodeId, HostedNodes>,
@@ -249,8 +255,15 @@ impl CaptureDeviceStore {
                 }
             })?;
 
+        let res_man = ResourceManagerBuilder::new_f32()
+            .channels(channels)
+            .sample_rate(sample_rate)
+            .decoding_backend::<SymphoniaBackend>()
+            .build()?;
+
         Ok(CaptureDeviceStore {
             device,
+            res_man,
             device_node: dev_node_id,
             node_graph,
             nodes: store,
@@ -264,6 +277,7 @@ impl CaptureDeviceStore {
 pub(crate) struct PlaybackDeviceStore {
     pub(crate) activity: Rc<PlaybackActivity>,
     pub(crate) device: RawDevice<f32>,
+    pub(crate) res_man: ResourceManager<f32>,
     pub(crate) node_graph: NodeGraph,
     pub(crate) nodes: Store<NodeId, HostedNodes>,
     pub(crate) channels: u32,
@@ -298,9 +312,16 @@ impl PlaybackDeviceStore {
                     let _ = reader.read_pcm_frames_into(out);
                 })?;
 
+        let res_man = ResourceManagerBuilder::new_f32()
+            .channels(channels)
+            .sample_rate(sample_rate)
+            .decoding_backend::<SymphoniaBackend>()
+            .build()?;
+
         Ok(PlaybackDeviceStore {
             activity: PlaybackActivity::new(user_flag),
             device,
+            res_man,
             node_graph,
             nodes: Store::<NodeId, HostedNodes>::new(),
             channels,

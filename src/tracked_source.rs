@@ -1,5 +1,4 @@
 use std::{
-    path::Path,
     rc::Rc,
     sync::{
         Arc,
@@ -10,21 +9,18 @@ use std::{
 use maudio::{
     audio::{sample_rate::SampleRate, wave_shape::WaveFormType},
     data_source::{
-        DataSource,
+        DataSource, DataSourceOps,
         data_source_builder::DataSourceBuilder,
         sources::{
-            decoder::{
-                DecoderOps, Fs,
-                custom_decoder::{CustomDecoder, CustomDecoderBuilder},
-            },
             noise::{Noise, NoiseBuilder, NoiseType},
             pulsewave::{PulseWave, PulseWaveBuilder},
             waveform::{WaveForm, WaveFormBuilder},
         },
     },
+    engine::resource::{Unknown, rm_stream::ResourceManagerStream},
 };
 
-use crate::{AuditoriumError, HostResult, sources::custom_decoder::SymphoniaBackend};
+use crate::{AuditoriumError, HostResult};
 
 pub(crate) struct PlaybackActivity {
     pub(crate) tracker: AtomicU32,
@@ -76,25 +72,20 @@ impl<S> TrackedSource<S> {
     }
 
     pub(crate) fn new_decoder(
-        path: &Path,
         channels: u32,
         sample_rate: SampleRate,
         tracker: Rc<PlaybackActivity>,
-    ) -> HostResult<DataSource<f32, TrackedSource<CustomDecoder<f32, Fs>>>> {
-        let decoder = CustomDecoderBuilder::new_f32()
-            .backend::<SymphoniaBackend>()
-            .channels(channels)
-            .sample_rate(sample_rate)
-            .from_file(path)?;
-        let len = decoder.length_pcm()?;
+        stream: ResourceManagerStream<f32, Unknown>,
+    ) -> HostResult<DataSource<f32, TrackedSource<ResourceManagerStream<f32, Unknown>>>> {
+        let len = stream.length_in_pcm_frames()?;
         let src = TrackedSource {
             active_players: tracker,
             is_active: AtomicBool::new(false),
             src_length: Some(len),
-            source: decoder,
+            source: stream,
         };
         let ds = DataSourceBuilder::new(channels, sample_rate)
-            .build_f32::<TrackedSource<CustomDecoder<f32, Fs>>>(src)
+            .build_f32::<TrackedSource<ResourceManagerStream<f32, Unknown>>>(src)
             .map_err(AuditoriumError::from)?;
         Ok(ds)
     }
