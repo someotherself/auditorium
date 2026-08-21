@@ -28,7 +28,7 @@ fn symphonia_error(error: impl ToString) -> MaudioError {
     MaudioError::new_ma_error(ErrorKinds::Other(error.to_string()))
 }
 
-pub struct SymphoniaBackend;
+pub(crate) struct SymphoniaBackend;
 
 pub struct SymphoniaDecoder<'stream> {
     format: Box<dyn FormatReader + 'stream>,

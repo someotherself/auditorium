@@ -36,7 +36,7 @@ impl PlaybackActivity {
     }
 }
 
-pub struct TrackedSource<S> {
+pub(crate) struct TrackedSource<S> {
     active_players: Rc<PlaybackActivity>,
     pub(crate) is_active: AtomicBool,
     pub(crate) src_length: Option<u64>,
