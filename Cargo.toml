@@ -4,8 +4,10 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/someotherself/auditorium"
+documentation = "https://docs.rs/auditorium/latest/auditorium/"
 description = "High-level audio library for playback and capture"
 categories = ["multimedia::audio", "multimedia"]
+keywords = ["audio", "miniaudio", "playback", "recording", "dsp"]
 
 [dependencies]
 crossbeam-channel = "0.5.16"
