@@ -86,7 +86,6 @@ At the moment, a capture device can only record to a `wav` file.
     let host = Host::spawn()?;
     let capt = host.build_capture_device()?.build("recording.wav")?;
 
-    let src_path = PathBuf::from(&path);
     let audio = capt.new_audio(&path)?;
 
     capt.dsp().hpf(200.0, 1).connect()?;
