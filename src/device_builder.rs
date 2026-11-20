@@ -195,33 +195,41 @@ impl PlaybackDeviceBuilder {
         Ok(self)
     }
 
-    // pub fn period_size_frames(self, frames: u32) -> HostResult<Self> {
-    //     let id = self.builder;
-    //     self.call(move |state| {
-    //         let builder = state
-    //             .play_device_builders
-    //             .values
-    //             .get_mut(&id)
-    //             .ok_or(AuditoriumError::InvalidDevice)?;
-    //         builder.period_size_frames(frames);
-    //         Ok(())
-    //     })?;
-    //     Ok(self)
-    // }
+    /// Sets the desired period size in frames.
+    ///
+    /// Miniaudio defines the period size as the size of device buffer, meaning the number of frames processed in one device callback.
+    pub fn period_size_frames(self, frames: u32) -> HostResult<Self> {
+        let id = self.builder;
+        self.call(move |state| {
+            let builder = state
+                .play_device_builders
+                .values
+                .get_mut(&id)
+                .ok_or(AuditoriumError::InvalidDevice)?;
+            builder.period_size_frames(frames);
+            builder.fixed_callback_size(true);
+            Ok(())
+        })?;
+        Ok(self)
+    }
 
-    // pub fn period_size_millis(self, millis: u32) -> HostResult<Self> {
-    //     let id = self.builder;
-    //     self.call(move |state| {
-    //         let builder = state
-    //             .play_device_builders
-    //             .values
-    //             .get_mut(&id)
-    //             .ok_or(AuditoriumError::InvalidDevice)?;
-    //         builder.period_size_millis(millis);
-    //         Ok(())
-    //     })?;
-    //     Ok(self)
-    // }
+    /// Sets the desired period size in millis.
+    ///
+    /// Miniaudio defines the period size as the size of device buffer, meaning the number of frames processed in one device callback.
+    pub fn period_size_millis(self, millis: u32) -> HostResult<Self> {
+        let id = self.builder;
+        self.call(move |state| {
+            let builder = state
+                .play_device_builders
+                .values
+                .get_mut(&id)
+                .ok_or(AuditoriumError::InvalidDevice)?;
+            builder.period_size_millis(millis);
+            builder.fixed_callback_size(true);
+            Ok(())
+        })?;
+        Ok(self)
+    }
 
     // pub fn fixed_callback_size(self, yes: bool) -> HostResult<Self> {
     //     let id = self.builder;
@@ -369,47 +377,41 @@ impl CaptureDeviceBuilder {
         Ok(self)
     }
 
-    // pub fn period_size_frames(self, frames: u32) -> HostResult<Self> {
-    //     let id = self.builder;
-    //     self.call(move |state| {
-    //         let builder = state
-    //             .capt_device_builders
-    //             .values
-    //             .get_mut(&id)
-    //             .ok_or(AuditoriumError::InvalidDevice)?;
-    //         builder.period_size_frames(frames);
-    //         Ok(())
-    //     })?;
-    //     Ok(self)
-    // }
+    /// Sets the desired period size in frames.
+    ///
+    /// Miniaudio defines the period size as the size of device buffer, meaning the number of frames processed in one device callback.
+    pub fn period_size_frames(self, frames: u32) -> HostResult<Self> {
+        let id = self.builder;
+        self.call(move |state| {
+            let builder = state
+                .capt_device_builders
+                .values
+                .get_mut(&id)
+                .ok_or(AuditoriumError::InvalidDevice)?;
+            builder.period_size_frames(frames);
+            builder.fixed_callback_size(true);
+            Ok(())
+        })?;
+        Ok(self)
+    }
 
-    // pub fn period_size_millis(self, millis: u32) -> HostResult<Self> {
-    //     let id = self.builder;
-    //     self.call(move |state| {
-    //         let builder = state
-    //             .capt_device_builders
-    //             .values
-    //             .get_mut(&id)
-    //             .ok_or(AuditoriumError::InvalidDevice)?;
-    //         builder.period_size_millis(millis);
-    //         Ok(())
-    //     })?;
-    //     Ok(self)
-    // }
-
-    // pub fn fixed_callback_size(self, yes: bool) -> HostResult<Self> {
-    //     let id = self.builder;
-    //     self.call(move |state| {
-    //         let builder = state
-    //             .capt_device_builders
-    //             .values
-    //             .get_mut(&id)
-    //             .ok_or(AuditoriumError::InvalidDevice)?;
-    //         builder.fixed_callback_size(yes);
-    //         Ok(())
-    //     })?;
-    //     Ok(self)
-    // }
+    /// Sets the desired period size in millis.
+    ///
+    /// Miniaudio defines the period size as the size of device buffer, meaning the number of frames processed in one device callback.
+    pub fn period_size_millis(self, millis: u32) -> HostResult<Self> {
+        let id = self.builder;
+        self.call(move |state| {
+            let builder = state
+                .capt_device_builders
+                .values
+                .get_mut(&id)
+                .ok_or(AuditoriumError::InvalidDevice)?;
+            builder.period_size_millis(millis);
+            builder.fixed_callback_size(true);
+            Ok(())
+        })?;
+        Ok(self)
+    }
 
     pub(crate) fn insert_builder(
         state: &mut HostState,
