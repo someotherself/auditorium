@@ -166,6 +166,22 @@ impl Noise {
         })
     }
 
+    /// Returns the current state of the source.
+    ///
+    /// **The node state only reflects whether the source has been explicitly started or stopped.**
+    pub fn state(&self) -> HostResult<NodeState> {
+        let id = self.0.id;
+        let device_id = self.0.store_id;
+        self.0.call_store_impl(device_id, move |store| {
+            match store.nodes().values.get(&id).unwrap() {
+                HostedNodes::AttachedNoise(value) => {
+                    value.as_node().state().map_err(AuditoriumError::from)
+                }
+                _ => unreachable!(),
+            }
+        })
+    }
+
     pub fn set_amplitude(&self, amplitude: f64) -> HostResult<()> {
         let id = self.0.id;
         let device_id = self.0.store_id;

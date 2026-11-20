@@ -294,6 +294,40 @@ impl Audio {
             }
         })
     }
+
+    /// Returns the current state of the source. **This state does not update when a sound finishes playing.**
+    ///
+    /// The node state only reflects whether the source has been explicitly started or stopped.
+    /// It does not automatically change to NodeState::Stopped when the audio source reaches the end of playback.
+    pub fn state(&self) -> HostResult<NodeState> {
+        let id = self.0.id;
+        let device_id = self.0.store_id;
+        self.0.call_store_impl(device_id, move |store| {
+            match store.nodes().values.get(&id).unwrap() {
+                HostedNodes::AttachedDecoder(value) => {
+                    value.as_node().state().map_err(AuditoriumError::from)
+                }
+                _ => unreachable!(),
+            }
+        })
+    }
+
+    /// Returns whether this playback source is currently producing audio.
+    /// It tracks whether the sources is actively producing frames.
+    ///
+    /// If this source produces silence, that is still considered as producing audio.
+    pub fn is_producing(&self) -> HostResult<bool> {
+        let id = self.0.id;
+        let device_id = self.0.store_id;
+        self.0.call_store_impl(device_id, move |store| {
+            match store.nodes().values.get(&id).unwrap() {
+                HostedNodes::AttachedDecoder(value) => {
+                    Ok(value.source().is_active.load(Ordering::Relaxed))
+                }
+                _ => unreachable!(),
+            }
+        })
+    }
 }
 
 impl PcmSource<f32> for TrackedSource<ResourceManagerStream<f32, Unknown>> {

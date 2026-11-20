@@ -39,6 +39,7 @@ pub mod maudio {
     pub use ::maudio::audio::{performance, sample_rate, wave_shape};
     pub use ::maudio::context;
     pub use ::maudio::device::{device_id, device_info, device_type};
+    pub use ::maudio::engine::node_graph::nodes::NodeState;
 }
 
 pub type HostResult<T> = Result<T, AuditoriumError>;
