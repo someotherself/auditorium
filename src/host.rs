@@ -9,8 +9,8 @@
 //! that access to the underlying audio state is serialized.
 //!
 //! A host is created with [`Host::spawn`]. It can then be used to create capture
-//! and playback device builders with [`Host::build_capture_device`] and
-//! [`Host::build_playback_device`].
+//! and playback device builders with [`Host::capture_device`] and
+//! [`Host::playback_device`].
 //!
 //! # Shutdown
 //!
@@ -380,7 +380,7 @@ type Job = Box<dyn FnOnce(&mut HostState) -> HostResult<()> + Send + 'static>;
 /// let host = auditorium::host::Host::spawn()?;
 ///
 /// let device = host
-///     .build_playback_device()?
+///     .playback_device()?
 ///     // configure the device...
 ///     ;
 ///
@@ -482,7 +482,7 @@ impl Host {
     ///
     /// If `channels` and `sample rate` is not selected,
     /// default vales of `2` and `44_100` respectively will be used.
-    pub fn build_capture_device(&self) -> HostResult<CaptureDeviceBuilder> {
+    pub fn capture_device(&self) -> HostResult<CaptureDeviceBuilder> {
         let id = self.call(|state| {
             let mut builder = DeviceBuilder::capture().f32();
             builder.capture_channels(2).sample_rate(SampleRate::Sr44100);
@@ -505,7 +505,7 @@ impl Host {
     ///
     /// If `channels` and `sample rate` is not selected,
     /// default vales of `2` and `44_100` respectively will be used.
-    pub fn build_playback_device(&self) -> HostResult<PlaybackDeviceBuilder> {
+    pub fn playback_device(&self) -> HostResult<PlaybackDeviceBuilder> {
         let id = self.call(|state| {
             let mut builder: RawPlaybackDeviceBuilder<'_, f32> = DeviceBuilder::playback().f32();
             builder

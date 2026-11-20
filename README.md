@@ -53,7 +53,7 @@ This example plays a simple audio source from a file and applies some dsp to it.
 
 ```rust
     let host = Host::spawn()?;
-    let device = host.build_playback_device()?.build()?;
+    let device = host.playback_device()?.build()?;
     let audio1 = device.new_audio(&path)?;
 
     // We must keep the chain alive too
@@ -84,7 +84,7 @@ At the moment, a capture device can only record to a `wav` file.
 
 ```rust
     let host = Host::spawn()?;
-    let capt = host.build_capture_device()?.build("recording.wav")?;
+    let capt = host.capture_device()?.build("recording.wav")?;
 
     let audio = capt.new_audio(&path)?;
 
@@ -145,7 +145,7 @@ especially with devices connecting / disconneting.
 
     let host = Host::spawn()?;
     let device = host
-        .build_capture_device()?
+        .capture_device()?
         .device_id(&selected.id)?
         .build(path)?;
 
