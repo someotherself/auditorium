@@ -137,18 +137,25 @@ impl PlaybackDevice {
     /// The file is decoded using the configured custom decoder and attached to
     /// this playback device's node graph. The returned [`Audio`] source is
     /// initially stopped.
-    pub fn new_audio<P: AsRef<Path>>(&self, path: P) -> HostResult<Audio> {
+    ///
+    /// By default, sounds are streamed. Use the decode flag to fully load them in memory before playing.
+    /// If the same path is added multiple times using the decode flag (by any device in this host),
+    /// the audio will be reference counted and only loaded into memory once.
+    pub fn new_audio<P: AsRef<Path>>(&self, path: P, decode: bool) -> HostResult<Audio> {
         let id = self.0.device;
         let sender = self.0.sender.clone();
         let path = path.as_ref().to_path_buf();
+        let flag = if decode {
+            RmSourceFlags::DECODE
+        } else {
+            RmSourceFlags::STREAM
+        };
         let node_id = self.call_playback_device(id, move |state| {
             let node_graph = &state.node_graph;
             let mut endpoint = node_graph.endpoint();
             let guard = state.res_man.register_file(&path, RmSourceFlags::NONE)?;
-            let source: ResourceManagerSource<f32, Unknown> = guard
-                .build_source(RmSourceFlags::STREAM, None)?
-                .into_ready()
-                .unwrap();
+            let source: ResourceManagerSource<f32, Unknown> =
+                guard.build_source(flag, None)?.into_ready().unwrap();
             let src = TrackedSource::<ResourceManagerSource<f32, Unknown>>::new_decoder(
                 state.channels,
                 state.sample_rate,
@@ -473,18 +480,25 @@ impl CaptureDevice {
     /// The file is decoded using the configured custom decoder and attached to
     /// this playback device's node graph. The returned [`Audio`] source is
     /// initially stopped.
-    pub fn new_audio<P: AsRef<Path>>(&self, path: P) -> HostResult<Audio> {
+    ///
+    /// By default, sounds are streamed. Use the decode flag to fully load them in memory before playing.
+    /// If the same path is added multiple times using the decode flag (by any device in this host),
+    /// the audio will be reference counted and only loaded into memory once.
+    pub fn new_audio<P: AsRef<Path>>(&self, path: P, decode: bool) -> HostResult<Audio> {
         let id = self.0.device;
         let sender = self.0.sender.clone();
         let path = path.as_ref().to_path_buf();
+        let flag = if decode {
+            RmSourceFlags::DECODE
+        } else {
+            RmSourceFlags::STREAM
+        };
         let node_id = self.call_capture_device(id, move |state| {
             let node_graph = &state.node_graph;
             let mut endpoint = node_graph.endpoint();
             let guard = state.res_man.register_file(&path, RmSourceFlags::NONE)?;
-            let source: ResourceManagerSource<f32, Unknown> = guard
-                .build_source(RmSourceFlags::STREAM, None)?
-                .into_ready()
-                .unwrap();
+            let source: ResourceManagerSource<f32, Unknown> =
+                guard.build_source(flag, None)?.into_ready().unwrap();
             let src = TrackedSource::<CustomDecoder<f32, Fs>>::new_decoder(
                 state.channels,
                 state.sample_rate,
