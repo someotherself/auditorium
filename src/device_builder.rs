@@ -231,20 +231,6 @@ impl PlaybackDeviceBuilder {
         Ok(self)
     }
 
-    // pub fn fixed_callback_size(self, yes: bool) -> HostResult<Self> {
-    //     let id = self.builder;
-    //     self.call(move |state| {
-    //         let builder = state
-    //             .play_device_builders
-    //             .values
-    //             .get_mut(&id)
-    //             .ok_or(AuditoriumError::InvalidDevice)?;
-    //         builder.fixed_callback_size(yes);
-    //         Ok(())
-    //     })?;
-    //     Ok(self)
-    // }
-
     pub(crate) fn insert_builder(
         state: &mut HostState,
         device_store: PlaybackDeviceStore,
@@ -423,7 +409,7 @@ impl CaptureDeviceBuilder {
         Ok(CaptureDevice::new(device_id, sender, flag))
     }
 
-    pub fn build(self, path: &Path) -> HostResult<CaptureDevice> {
+    pub fn build_wav_to_file(self, path: &Path) -> HostResult<CaptureDevice> {
         let id = self.builder;
         let sender = self.sender.clone();
         let flag = self.is_shutdown.clone();

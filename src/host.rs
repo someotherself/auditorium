@@ -185,7 +185,7 @@ impl CaptureDeviceStore {
         channels: u32,
         sample_rate: SampleRate,
         builder: &mut RawCaptureDeviceBuilder<f32>,
-        path: &Path,
+        path: impl AsRef<Path>,
     ) -> HostResult<Self> {
         let frames: usize = 1000;
         let node_graph = NodeGraphBuilder::new(channels).build()?;
@@ -210,7 +210,7 @@ impl CaptureDeviceStore {
 
         let mut encoder = EncoderBuilder::new_f32(channels, sample_rate)
             .wav()
-            .build_path(path)?;
+            .build_path(path.as_ref())?;
 
         // We need an intermediary buffer between the endpoint and the encoder
         let mut out_buff = vec![0.0; frames * channels as usize];

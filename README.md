@@ -84,7 +84,7 @@ At the moment, a capture device can only record to a `wav` file.
 
 ```rust
     let host = Host::spawn()?;
-    let capt = host.capture_device()?.build("recording.wav")?;
+    let capt = host.capture_device()?.build_wav_to_file("recording.wav")?;
 
     let audio = capt.new_audio(&path)?;
 
