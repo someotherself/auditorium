@@ -17,7 +17,7 @@ use maudio::{
             waveform::{WaveForm, WaveFormBuilder},
         },
     },
-    engine::resource::{Unknown, rm_stream::ResourceManagerStream},
+    engine::resource::{Unknown, rm_source::ResourceManagerSource},
 };
 
 use crate::{AuditoriumError, HostResult};
@@ -75,17 +75,17 @@ impl<S> TrackedSource<S> {
         channels: u32,
         sample_rate: SampleRate,
         tracker: Rc<PlaybackActivity>,
-        stream: ResourceManagerStream<f32, Unknown>,
-    ) -> HostResult<DataSource<f32, TrackedSource<ResourceManagerStream<f32, Unknown>>>> {
-        let len = stream.length_in_pcm_frames()?;
+        source: ResourceManagerSource<f32, Unknown>,
+    ) -> HostResult<DataSource<f32, TrackedSource<ResourceManagerSource<f32, Unknown>>>> {
+        let len = source.length_in_pcm_frames()?;
         let src = TrackedSource {
             active_players: tracker,
             is_active: AtomicBool::new(false),
             src_length: Some(len),
-            source: stream,
+            source,
         };
         let ds = DataSourceBuilder::new(channels, sample_rate)
-            .build_f32::<TrackedSource<ResourceManagerStream<f32, Unknown>>>(src)
+            .build_f32::<TrackedSource<ResourceManagerSource<f32, Unknown>>>(src)
             .map_err(AuditoriumError::from)?;
         Ok(ds)
     }

@@ -23,7 +23,7 @@ use maudio::{
     data_source::{DataSourceOps, pcm_source::PcmSource},
     engine::{
         node_graph::nodes::{NodeOps, NodeState, routing::splitter::SplitterNodeBuilder},
-        resource::{Unknown, rm_stream::ResourceManagerStream},
+        resource::{Unknown, rm_source::ResourceManagerSource},
     },
 };
 
@@ -330,7 +330,7 @@ impl Audio {
     }
 }
 
-impl PcmSource<f32> for TrackedSource<ResourceManagerStream<f32, Unknown>> {
+impl PcmSource<f32> for TrackedSource<ResourceManagerSource<f32, Unknown>> {
     fn fill_pcm_frames(
         &mut self,
         out: &mut [f32],

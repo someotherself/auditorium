@@ -65,7 +65,7 @@ use maudio::{
         },
         resource::{
             ResourceManager, Unknown, rm_builder::ResourceManagerBuilder,
-            rm_stream::ResourceManagerStream,
+            rm_source::ResourceManagerSource,
         },
     },
 };
@@ -96,7 +96,7 @@ pub(crate) struct HostState<'a> {
 #[non_exhaustive]
 pub(crate) enum HostedNodes {
     AttachedDecoder(
-        AttachedSourceNode<DataSource<f32, TrackedSource<ResourceManagerStream<f32, Unknown>>>>,
+        AttachedSourceNode<DataSource<f32, TrackedSource<ResourceManagerSource<f32, Unknown>>>>,
     ),
     AttachedWave(AttachedSourceNode<DataSource<f32, TrackedSource<WaveForm<f32>>>>),
     AttachedPulse(AttachedSourceNode<DataSource<f32, TrackedSource<PulseWave<f32>>>>),
