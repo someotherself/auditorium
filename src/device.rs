@@ -46,7 +46,7 @@ use std::{
 
 use crossbeam_channel::Sender;
 use maudio::{
-    audio::wave_shape::WaveFormType,
+    audio::{channels::Channel, sample_rate::SampleRate, wave_shape::WaveFormType},
     data_source::{
         DataSource,
         sources::{
@@ -56,6 +56,7 @@ use maudio::{
             waveform::WaveForm,
         },
     },
+    device::{DeviceOps, device_state::DeviceState},
     engine::{
         node_graph::{
             NodeGraphOps,
@@ -136,11 +137,6 @@ impl PlaybackDevice {
     /// The file is decoded using the configured custom decoder and attached to
     /// this playback device's node graph. The returned [`Audio`] source is
     /// initially stopped.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the file cannot be opened or decoded, or if the source
-    /// cannot be attached to the device's node graph.
     pub fn new_audio<P: AsRef<Path>>(&self, path: P) -> HostResult<Audio> {
         let id = self.0.device;
         let sender = self.0.sender.clone();
@@ -285,6 +281,70 @@ impl PlaybackDevice {
         ))
     }
 
+    pub fn device_name(&self) -> HostResult<String> {
+        let id = self.0.device;
+        self.call_playback_device(id, move |store| {
+            store
+                .device
+                .get_name(maudio::device::device_type::DeviceType::Playback)
+                .map_err(AuditoriumError::from)
+        })
+    }
+
+    pub fn state(&self) -> HostResult<DeviceState> {
+        let id = self.0.device;
+        self.call_playback_device(id, move |store| {
+            store.device.get_state().map_err(AuditoriumError::from)
+        })
+    }
+
+    pub fn volume(&self) -> HostResult<f32> {
+        let id = self.0.device;
+        self.call_playback_device(id, move |store| {
+            store.device.master_volume().map_err(AuditoriumError::from)
+        })
+    }
+
+    pub fn volume_db(&self) -> HostResult<f32> {
+        let id = self.0.device;
+        self.call_playback_device(id, move |store| {
+            store
+                .device
+                .master_volume_db()
+                .map_err(AuditoriumError::from)
+        })
+    }
+
+    pub fn set_volume(&self, volume: f32) -> HostResult<()> {
+        let id = self.0.device;
+        self.call_playback_device(id, move |store| {
+            store
+                .device
+                .set_master_volume(volume)
+                .map_err(AuditoriumError::from)
+        })
+    }
+
+    pub fn channels(&self) -> HostResult<u32> {
+        let id = self.0.device;
+        self.call_playback_device(id, move |store| Ok(store.channels))
+    }
+
+    pub fn channel_map(&self) -> HostResult<Vec<Channel>> {
+        let id = self.0.device;
+        self.call_playback_device(id, move |store| {
+            store
+                .device
+                .channel_map_playback()
+                .map_err(AuditoriumError::from)
+        })
+    }
+
+    pub fn sample_rate(&self) -> HostResult<SampleRate> {
+        let id = self.0.device;
+        self.call_playback_device(id, move |store| Ok(store.sample_rate))
+    }
+
     /// Pauses playback without stopping the underlying audio device or device.
     ///
     /// While paused, the device remains running but playback sources do not
@@ -413,11 +473,6 @@ impl CaptureDevice {
     /// The file is decoded using the configured custom decoder and attached to
     /// this playback device's node graph. The returned [`Audio`] source is
     /// initially stopped.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the file cannot be opened or decoded, or if the source
-    /// cannot be attached to the device's node graph.
     pub fn new_audio<P: AsRef<Path>>(&self, path: P) -> HostResult<Audio> {
         let id = self.0.device;
         let sender = self.0.sender.clone();
@@ -562,6 +617,70 @@ impl CaptureDevice {
             sender,
             self.0.is_shutdown.clone(),
         ))
+    }
+
+    pub fn device_name(&self) -> HostResult<String> {
+        let id = self.0.device;
+        self.call_capture_device(id, move |store| {
+            store
+                .device
+                .get_name(maudio::device::device_type::DeviceType::Capture)
+                .map_err(AuditoriumError::from)
+        })
+    }
+
+    pub fn state(&self) -> HostResult<DeviceState> {
+        let id = self.0.device;
+        self.call_capture_device(id, move |store| {
+            store.device.get_state().map_err(AuditoriumError::from)
+        })
+    }
+
+    pub fn volume(&self) -> HostResult<f32> {
+        let id = self.0.device;
+        self.call_capture_device(id, move |store| {
+            store.device.master_volume().map_err(AuditoriumError::from)
+        })
+    }
+
+    pub fn volume_db(&self) -> HostResult<f32> {
+        let id = self.0.device;
+        self.call_capture_device(id, move |store| {
+            store
+                .device
+                .master_volume_db()
+                .map_err(AuditoriumError::from)
+        })
+    }
+
+    pub fn set_volume(&self, volume: f32) -> HostResult<()> {
+        let id = self.0.device;
+        self.call_capture_device(id, move |store| {
+            store
+                .device
+                .set_master_volume(volume)
+                .map_err(AuditoriumError::from)
+        })
+    }
+
+    pub fn channels(&self) -> HostResult<u32> {
+        let id = self.0.device;
+        self.call_capture_device(id, move |store| Ok(store.channels))
+    }
+
+    pub fn channel_map(&self) -> HostResult<Vec<Channel>> {
+        let id = self.0.device;
+        self.call_capture_device(id, move |store| {
+            store
+                .device
+                .channel_map_capture()
+                .map_err(AuditoriumError::from)
+        })
+    }
+
+    pub fn sample_rate(&self) -> HostResult<SampleRate> {
+        let id = self.0.device;
+        self.call_capture_device(id, move |store| Ok(store.sample_rate))
     }
 
     /// Creates a DSP chain starting at this capture device.
